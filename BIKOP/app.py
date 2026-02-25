@@ -47,25 +47,34 @@ if 'logged_in' not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("☀️ Selamat Datang di Biro Koperasi")
+    
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.subheader("🔑 Login Admin")
-        user = st.text_input("Username")
-        pw = st.text_input("Password", type="password")
+        user = st.text_input("Username", placeholder="Masukkan username")
+        pw = st.text_input("Password", type="password", placeholder="Masukkan password")
         if st.button("Masuk Sistem"):
             if user == "admin" and pw == "koperasi123":
                 st.session_state.logged_in = True
                 st.rerun()
             else:
-                st.error("Akun tidak ditemukan")
+                st.error("Akun tidak ditemukan atau password salah.")
     
     with col2:
-        st.subheader("📝 Kotak Saran & Aspirasi")
-        nama = st.text_input("Nama (Opsional)")
-        saran = st.text_area("Masukkan saran Anda untuk Koperasi kami...")
-        if st.button("Kirim Saran"):
-            st.success(f"Terima kasih {nama}! Saran Anda telah terekam.")
+        st.subheader("🕵️ Kotak Saran Anonim")
+        st.write("Suara Anda sangat berharga bagi kami. Identitas Anda akan tetap rahasia.")
+        
+        # Input Saran
+        saran_anonim = st.text_area("Tulis saran, kritik, atau aspirasi Anda di sini:", height=150)
+        
+        if st.button("Kirim Saran Secara Anonim"):
+            if saran_anonim.strip() == "":
+                st.warning("Mohon isi saran sebelum mengirim.")
+            else:
+                # Simulasi pengiriman (Anda bisa menghubungkan ini ke Google Form API/Webhook nanti)
+                st.success("✅ Terima kasih! Saran Anda telah terkirim secara anonim.")
+                st.balloons() # Efek perayaan kecil
 
 else:
     # --- DASHBOARD UTAMA ---
@@ -111,4 +120,5 @@ else:
             df_plot["Saldo"] = (df_plot["Masuk"] - df_plot["Keluar"]).cumsum()
             fig = px.line(df_plot, x="Tanggal", y="Saldo", title="Pergerakan Saldo Kumulatif")
             st.plotly_chart(fig, use_container_width=True)
+
 
