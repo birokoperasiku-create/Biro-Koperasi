@@ -5,10 +5,10 @@ from streamlit_gsheets import GSheetsConnection
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Koperasi BIKOP", layout="wide")
 
-# --- LINK GOOGLE SHEETS ---
+# --- LINK GOOGLE SHEETS ANDA ---
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1tgX-mcdxOdcFwtQdAexjFuniDoF4SLoEyWNQrqmH7o4/edit?usp=sharing"
 
-# --- CUSTOM CSS (TEMA GELAP) ---
+# --- CUSTOM CSS ---
 st.markdown("""
     <style>
     .stApp { background-color: #0E1117; color: #FFFFFF; }
@@ -37,7 +37,15 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
+    # --- HALAMAN LOGIN ---
     st.title("☀️ Selamat Datang di BIKOP")
-    col1, col2, col3 = st.columns([1, 2, 1])
+    c1, c2, c3 = st.columns([1, 2, 1])
     
-    with col2:
+    with c2:
+        st.subheader("🔑 Login Admin")
+        username = st.text_input("Username", key="user")
+        password = st.text_input("Password", type="password", key="pass")
+        
+        if st.button("Masuk Ke Dashboard"):
+            if username == "admin" and password == "koperasi123":
+                st.session_state.logged_in = True
