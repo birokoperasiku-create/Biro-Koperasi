@@ -4,14 +4,14 @@ from streamlit_gsheets import GSheetsConnection
 from datetime import datetime
 
 # --- KONFIGURASI ---
-# Link CSV untuk Dashboard (tetap pakai link pub)
+# Link CSV untuk Dashboard (Public)
 CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQww8g5_pyMq672ZX2vOm68_xCZvcCfTZNx4MEpURB-oJYo4YnxppaKnW6tGKomC0oyO2PMpIfK10XJ/pub?output=csv"
-# Link EDIT untuk GSheets Connection (pastikan akses: Anyone with link can EDIT)
+# Link UTAMA untuk Koneksi (Harus link yang bisa diedit)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_M/edit#gid=0"
 
 st.set_page_config(page_title="Koperasi Digital", layout="wide")
 
-# CSS Perbaikan (Menghilangkan error unsafe_base_config)
+# Perbaikan CSS (Menghapus 'unsafe_base_config' yang bikin error di screenshot 1)
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
@@ -28,7 +28,7 @@ st.markdown("""
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
-# --- TAMPILAN DEPAN (LOGIN & SARAN) ---
+# --- TAMPILAN DEPAN ---
 if not st.session_state.logged_in:
     st.title("☀️ Layanan Mandiri Koperasi")
     c1, c2 = st.columns([1, 1], gap="large")
@@ -46,50 +46,44 @@ if not st.session_state.logged_in:
 
     with c2:
         st.subheader("🕵️ Kotak Saran Anonim")
-        pesan = st.text_area("Tulis saran di sini (identitas Anda tetap rahasia)...")
+        pesan = st.text_area("Tulis saran di sini...", height=150)
         
         if st.button("Kirim Saran"):
             if pesan:
                 try:
-                    # Koneksi ke GSheets
+                    # Inisialisasi koneksi
                     conn = st.connection("gsheets", type=GSheetsConnection)
-                    # Baca data lama dari sheet bernama "Saran"
-                    df_lama = conn.read(spreadsheet=SHEET_URL, worksheet="Saran")
                     
-                    # Tambah baris baru
+                    # Baca data lama dari tab 'Saran'
+                    # Jika tab tidak ditemukan, ini akan memicu error
+                    df_lama = conn.read(spreadsheet=SHEET_URL, worksheet="Saran", ttl=0)
+                    
+                    # Buat data baru
                     df_baru = pd.DataFrame([{"Tanggal": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Saran": pesan}])
+                    
+                    # Gabungkan
                     df_final = pd.concat([df_lama, df_baru], ignore_index=True)
                     
-                    # Tulis balik ke Sheets
+                    # Update kembali ke Sheets
                     conn.update(spreadsheet=SHEET_URL, worksheet="Saran", data=df_final)
-                    st.success("Saran berhasil terkirim secara anonim!")
+                    st.success("Saran berhasil terkirim!")
                     st.balloons()
                 except Exception as e:
-                    st.error(f"Gagal mengirim. Pastikan tab bernama 'Saran' ada di Google Sheets. Error: {e}")
+                    st.error(f"Gagal mengirim. Solusi: Pastikan tab di Excel Anda bernama 'Saran' (case sensitive).")
+                    st.info(f"Detail Error: {e}")
             else:
-                st.warning("Mohon isi kotak saran.")
+                st.warning("Mohon tuliskan pesan.")
 
-# --- TAMPILAN DASHBOARD (SETELAH LOGIN) ---
+# --- TAMPILAN DASHBOARD ---
 else:
-    st.sidebar.title("☀️ Dashboard")
+    st.sidebar.title("☀️ Menu")
     if st.sidebar.button("Keluar (Logout)"):
         st.session_state.logged_in = False
         st.rerun()
 
     st.title("📊 Laporan Keuangan Real-Time")
     try:
-        df = pd.read_csv(CSV_URL)
-        
-        # Hitung Metrik
-        col_m1, col_m2 = st.columns(2)
-        if "Masuk" in df.columns and "Keluar" in df.columns:
-            total_masuk = pd.to_numeric(df["Masuk"], errors='coerce').sum()
-            total_keluar = pd.to_numeric(df["Keluar"], errors='coerce').sum()
-            col_m1.metric("Total Pemasukan", f"Rp {total_masuk:,.0f}")
-            col_m2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
-        
-        st.markdown("---")
-        st.subheader("Data Transaksi Terkini")
-        st.dataframe(df, use_container_width=True)
+        df_dash = pd.read_csv(CSV_URL)
+        st.dataframe(df_dash, use_container_width=True)
     except:
-        st.info("Sedang memuat data...")
+        st.warning("Gagal memuat data dashboard.")
