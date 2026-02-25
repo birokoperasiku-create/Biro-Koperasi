@@ -6,14 +6,23 @@ import plotly.express as px
 st.set_page_config(page_title="Koperasi Digital", layout="wide", initial_sidebar_state="expanded")
 
 # Custom CSS untuk tema cerah & bersih
+# Custom CSS untuk tema cerah & bersih (Menggunakan unsafe_allow_html)
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    div.stButton > button:first-child { background-color: #007bff; color: white; border-radius: 5px; }
+    [data-testid="stMetric"] { 
+        background-color: #ffffff; 
+        padding: 20px; 
+        border-radius: 10px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+    }
+    div.stButton > button:first-child { 
+        background-color: #007bff; 
+        color: white; 
+        border-radius: 5px; 
+    }
     </style>
-    """, unsafe_base_config=True)
-
+    """, unsafe_allow_html=True)
 # --- LINK INTEGRASI ---
 # Ganti dengan link "Spreadsheet" Anda (Bukan link Publish to Web)
 # Pastikan aksesnya "Anyone with the link can Edit"
@@ -102,3 +111,4 @@ else:
             df_plot["Saldo"] = (df_plot["Masuk"] - df_plot["Keluar"]).cumsum()
             fig = px.line(df_plot, x="Tanggal", y="Saldo", title="Pergerakan Saldo Kumulatif")
             st.plotly_chart(fig, use_container_width=True)
+
