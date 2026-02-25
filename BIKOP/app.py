@@ -1,94 +1,104 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
 
-# --- CONFIG & LINK GOOGLE SHEETS ANDA ---
-# Link ini sudah diubah dari format HTML ke format CSV agar bisa dibaca Python
-SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_MFGBRcnae4DjogoUIOW4ioJ1HdqPQHtO4/pub?output=csv"
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Koperasi Digital", layout="wide", initial_sidebar_state="expanded")
 
-st.set_page_config(page_title="Dashboard Keuangan Koperasi", layout="wide")
+# Custom CSS untuk tema cerah & bersih
+st.markdown("""
+    <style>
+    .main { background-color: #f8f9fa; }
+    .stMetric { background-color: #ffffff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    div.stButton > button:first-child { background-color: #007bff; color: white; border-radius: 5px; }
+    </style>
+    """, unsafe_base_config=True)
 
+# --- LINK INTEGRASI ---
+# Ganti dengan link "Spreadsheet" Anda (Bukan link Publish to Web)
+# Pastikan aksesnya "Anyone with the link can Edit"
+SHEET_EDIT_URL = "https://docs.google.com/spreadsheets/d/1yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_M/edit" 
+# Link CSV untuk Grafik (Publish to Web -> CSV)
+SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS0yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_MFGBRcnae4DjogoUIOW4ioJ1HdqPQHtO4/pub?output=csv"
 
 # --- FUNGSI AMBIL DATA ---
-@st.cache_data(ttl=600)  # Data disimpan di cache selama 10 menit
+@st.cache_data(ttl=60)
 def load_data():
     try:
-        df_cloud = pd.read_csv(SHEET_URL)
-        # Konversi kolom Tanggal (pastikan di Excel kolomnya bernama 'Tanggal')
-        if 'Tanggal' in df_cloud.columns:
-            df_cloud['Tanggal'] = pd.to_datetime(df_cloud['Tanggal'])
-        return df_cloud
-    except Exception as e:
-        st.error(f"Gagal memuat data: {e}")
+        df = pd.read_csv(SHEET_CSV_URL)
+        if 'Tanggal' in df.columns:
+            df['Tanggal'] = pd.to_datetime(df['Tanggal'])
+        return df
+    except:
         return pd.DataFrame()
 
-
-# --- SISTEM LOGIN ---
+# --- SISTEM NAVIGASI ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
-
-def login():
-    st.title("🔐 Login Biro Koperasi")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
-    if st.button("Masuk"):
-        if username == "admin" and password == "koperasi123":
-            st.session_state.logged_in = True
-            st.rerun()
-        else:
-            st.error("Akses Ditolak!")
-
-
-# --- LOGIKA TAMPILAN ---
 if not st.session_state.logged_in:
-    login()
-else:
-    # Sidebar
-    st.sidebar.title("Menu")
-    if st.sidebar.button("🔄 Perbarui Data"):
-        st.cache_data.clear()
-        st.rerun()
+    st.title("☀️ Selamat Datang di Biro Koperasi")
+    col1, col2 = st.columns([1, 1])
+    
+    with col1:
+        st.subheader("🔑 Login Admin")
+        user = st.text_input("Username")
+        pw = st.text_input("Password", type="password")
+        if st.button("Masuk Sistem"):
+            if user == "admin" and pw == "koperasi123":
+                st.session_state.logged_in = True
+                st.rerun()
+            else:
+                st.error("Akun tidak ditemukan")
+    
+    with col2:
+        st.subheader("📝 Kotak Saran & Aspirasi")
+        nama = st.text_input("Nama (Opsional)")
+        saran = st.text_area("Masukkan saran Anda untuk Koperasi kami...")
+        if st.button("Kirim Saran"):
+            st.success(f"Terima kasih {nama}! Saran Anda telah terekam.")
 
-    if st.sidebar.button("🚪 Log Out"):
+else:
+    # --- DASHBOARD UTAMA ---
+    st.sidebar.title("☀️ Navigasi")
+    menu = st.sidebar.radio("Pilih Menu:", ["🏠 Dashboard Visual", "📝 Edit Data Excel", "📈 Analisis Trend"])
+    
+    if st.sidebar.button("🚪 Keluar"):
         st.session_state.logged_in = False
         st.rerun()
 
-    # Memuat Data
     df = load_data()
 
-    if not df.empty:
-        st.title("📊 Laporan Keuangan Real-Time")
-        st.write("Data bersumber dari Google Sheets yang Anda lampirkan.")
+    if menu == "🏠 Dashboard Visual":
+        st.title("📊 Ringkasan Keuangan")
+        
+        if not df.empty:
+            t_masuk = df["Masuk"].sum() if "Masuk" in df.columns else 0
+            t_keluar = df["Keluar"].sum() if "Keluar" in df.columns else 0
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Pemasukan", f"Rp {t_masuk:,.0f}", delta_color="normal")
+            c2.metric("Pengeluaran", f"Rp {t_keluar:,.0f}", delta_color="inverse")
+            c3.metric("Saldo Kas", f"Rp {t_masuk - t_keluar:,.0f}")
+            
+            st.subheader("Data Transaksi Terkini")
+            st.dataframe(df.tail(10), use_container_width=True)
+        else:
+            st.info("Belum ada data untuk ditampilkan.")
 
-        # Menghitung Metrik
-        # Pastikan nama kolom di Excel Anda pas: 'Masuk' dan 'Keluar'
-        total_masuk = df["Masuk"].sum() if "Masuk" in df.columns else 0
-        total_keluar = df["Keluar"].sum() if "Keluar" in df.columns else 0
-        saldo = total_masuk - total_keluar
+    elif menu == "📝 Edit Data Excel":
+        st.title("📝 Edit Spreadsheet Langsung")
+        st.info("Perubahan di sini akan langsung tersimpan ke Google Sheets dan sinkron ke semua perangkat.")
+        
+        # Menggunakan IFrame untuk menampilkan Excel asli yang bisa diedit
+        # Ganti '/edit' menjadi '/edit?rm=minimal' agar tampilan lebih bersih
+        embed_url = SHEET_EDIT_URL.replace("/edit", "/edit?rm=minimal")
+        st.components.v1.iframe(embed_url, height=600, scrolling=True)
 
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Total Pemasukan", f"Rp {total_masuk:,.0f}")
-        m2.metric("Total Pengeluaran", f"Rp {total_keluar:,.0f}")
-        m3.metric("Saldo Kas", f"Rp {saldo:,.0f}")
-
-        st.markdown("---")
-
-        # Visualisasi & Tabel
-        col_left, col_right = st.columns([1, 1])
-
-        with col_left:
-            st.subheader("📈 Grafik Saldo")
-            if "Tanggal" in df.columns:
-                df_plot = df.sort_values("Tanggal").copy()
-                df_plot["Saldo Kumulatif"] = (df_plot["Masuk"] - df_plot["Keluar"]).cumsum()
-                fig = px.area(df_plot, x="Tanggal", y="Saldo Kumulatif", title="Trend Kas")
-                st.plotly_chart(fig, use_container_width=True)
-
-        with col_right:
-            st.subheader("📝 Detail Transaksi")
-            st.dataframe(df, use_container_width=True)
-    else:
-        st.warning(
-            "Data tidak ditemukan. Pastikan kolom di Google Sheets memiliki judul: Tanggal, Kategori, Keterangan, Masuk, Keluar.")
+    elif menu == "📈 Analisis Trend":
+        st.title("📈 Analisis Grafik")
+        if not df.empty and "Tanggal" in df.columns:
+            df_plot = df.sort_values("Tanggal")
+            df_plot["Saldo"] = (df_plot["Masuk"] - df_plot["Keluar"]).cumsum()
+            fig = px.line(df_plot, x="Tanggal", y="Saldo", title="Pergerakan Saldo Kumulatif")
+            st.plotly_chart(fig, use_container_width=True)
