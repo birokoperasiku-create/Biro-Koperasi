@@ -5,7 +5,7 @@ from streamlit_gsheets import GSheetsConnection
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Dashboard Koperasi BIKOP", layout="wide")
 
-# --- LINK GOOGLE SHEETS TERBARU ---
+# --- LINK GOOGLE SHEETS ---
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1tgX-mcdxOdcFwtQdAexjFuniDoF4SLoEyWNQrqmH7o4/edit?usp=sharing"
 
 # --- CUSTOM CSS (TEMA GELAP) ---
@@ -26,7 +26,6 @@ st.markdown("""
 def load_data():
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Membaca data dari sheet pertama secara otomatis
         df = conn.read(spreadsheet=SHEET_URL, ttl=0)
         return df
     except Exception as e:
@@ -38,9 +37,7 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
-    # Tampilan Halaman Login
     st.title("☀️ Selamat Datang di BIKOP")
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.subheader("
