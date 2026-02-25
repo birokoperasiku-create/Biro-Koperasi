@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from streamlit_gsheets import GSheetsConnection
-from datetime import datetime
 
 # --- CONFIG & LINK GOOGLE SHEETS ---
+# Pastikan di Google Sheets Anda minimal ada tab bernama 'Transaksi'
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_M/edit#gid=0"
 
 st.set_page_config(page_title="Dashboard Keuangan Koperasi", layout="wide")
@@ -30,6 +30,7 @@ def load_data(worksheet_name):
         df = conn.read(spreadsheet=SHEET_URL, worksheet=worksheet_name, ttl=0)
         return df
     except Exception as e:
+        st.error(f"Gagal memuat data dari tab '{worksheet_name}'. Pastikan nama tab sesuai.")
         return pd.DataFrame()
 
 # --- SESSION STATE ---
@@ -38,43 +39,59 @@ if 'logged_in' not in st.session_state:
 
 # --- LOGIKA HALAMAN ---
 if not st.session_state.logged_in:
-    # --- HALAMAN DEPAN (LOGIN & SARAN) ---
-    st.title("☀️ Layanan Mandiri Koperasi")
-    col1, col2 = st.columns([1, 1], gap="large")
-
-    with col1:
-        st.subheader("🔑 Akses Admin")
+    # --- HALAMAN LOGIN ---
+    st.title("☀️ Sistem Informasi Koperasi")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.subheader("🔑 Login Admin")
         u = st.text_input("Username")
         p = st.text_input("Password", type="password")
-        if st.button("Masuk Ke Sistem"):
+        if st.button("Masuk"):
             if u == "admin" and p == "koperasi123":
                 st.session_state.logged_in = True
                 st.rerun()
             else:
-                st.error("Kredensial salah.")
+                st.error("Username atau Password salah.")
+else:
+    # --- HALAMAN DASHBOARD ---
+    st.sidebar.title("Menu")
+    if st.sidebar.button("🚪 Keluar"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-    with col2:
-        st.subheader("🕵️ Kotak Saran & Laporan")
-        st.write("Kirim masukan ke: birokoperasiku@gmail.com")
+    st.title("📊 Dashboard Keuangan")
+    
+    # Ambil data dari tab 'Transaksi' saja
+    df = load_data("Transaksi")
+
+    if not df.empty:
+        # Pastikan kolom angka valid
+        df['Masuk'] = pd.to_numeric(df['Masuk'], errors='coerce').fillna(0)
+        df['Keluar'] = pd.to_numeric(df['Keluar'], errors='coerce').fillna(0)
         
-        pesan = st.text_area("Tulis saran di sini...", height=150)
+        # Ringkasan Angka
+        total_masuk = df['Masuk'].sum()
+        total_keluar = df['Keluar'].sum()
+        saldo = total_masuk - total_keluar
         
-        if st.button("Kirim Sekarang"):
-            if pesan:
-                try:
-                    conn = st.connection("gsheets", type=GSheetsConnection)
-                    df_saran = load_data("Saran")
-                    
-                    new_entry = pd.DataFrame([{
-                        "Tanggal": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "Isi Saran": pesan,
-                        "Status": "Perlu Dicek"
-                    }])
-                    
-                    df_final = pd.concat([df_saran, new_entry], ignore_index=True)
-                    conn.update(spreadsheet=SHEET_URL, worksheet="Saran", data=df_final)
-                    
-                    st.success("✅ Terkirim ke Google Sheets!")
-                    st.balloons()
-                except Exception as e:
-                    st.error(f"Gagal: Pastikan tab bernama 'Saran'
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Pemasukan", f"Rp {total_masuk:,.0f}")
+        m2.metric("Pengeluaran", f"Rp {total_keluar:,.0f}")
+        m3.metric("Saldo Akhir", f"Rp {saldo:,.0f}")
+
+        st.divider()
+
+        # Grafik (Jika ada kolom Tanggal)
+        if 'Tanggal' in df.columns:
+            df['Tanggal'] = pd.to_datetime(df['Tanggal'])
+            df_plot = df.sort_values("Tanggal")
+            df_plot["Saldo"] = (df_plot["Masuk"] - df_plot["Keluar"]).cumsum()
+            fig = px.area(df_plot, x="Tanggal", y="Saldo", title="Tren Saldo", template="plotly_dark")
+            st.plotly_chart(fig, use_container_width=True)
+
+        # Tabel Data
+        st.subheader("📋 Detail Transaksi Terakhir")
+        st.dataframe(df, use_container_width=True)
+    else:
+        st.warning("Data tidak tersedia. Harap periksa tab 'Transaksi' di Google Sheets Anda.")
