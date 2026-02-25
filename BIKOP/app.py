@@ -10,14 +10,18 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQww8g5_pyMq672ZX2vOm
 
 st.set_page_config(page_title="Koperasi Digital", layout="wide")
 
-# CSS Tema Cerah & Bersih
+# Perbaikan CSS agar tidak error
 st.markdown("""
     <style>
     .stApp { background-color: #f8f9fa; }
-    [data-testid="stMetric"] { background-color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .stButton>button { width: 100%; border-radius: 8px; height: 3em; background-color: #007bff; color: white; }
+    [data-testid="stMetric"] { 
+        background-color: white; 
+        padding: 20px; 
+        border-radius: 12px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+    }
     </style>
-    """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True) # Gunakan unsafe_allow_html, bukan unsafe_base_config
 
 # --- SESSION STATE ---
 if 'logged_in' not in st.session_state:
@@ -39,23 +43,29 @@ if not st.session_state.logged_in:
             else:
                 st.error("Kredensial salah.")
 
-    with c2:
-        st.subheader("🕵️ Kotak Saran Anonim")
-        pesan = st.text_area("Ada keluhan atau ide? Tulis di sini tanpa perlu identitas.", height=150)
-        if st.button("Kirim Saran Sekarang"):
-            if pesan.strip() != "":
-                try:
-                    # Proses pengiriman ke Google Sheets
-                    response = requests.post(WEB_APP_URL, data=json.dumps({"saran": pesan}))
-                    if response.status_code == 200:
-                        st.success("Saran Anda telah terkirim ke sistem! Terima kasih.")
-                        st.balloons()
-                    else:
-                        st.error("Terjadi kendala pada server penampung.")
-                except:
-                    st.error("Gagal mengirim. Periksa URL Apps Script Anda.")
-            else:
-                st.warning("Mohon tuliskan sesuatu sebelum mengirim.")
+   from streamlit_gsheets import GSheetsConnection
+
+# 1. Buat koneksi (Ganti link dengan link Google Sheets Edit kamu)
+url = "https://docs.google.com/spreadsheets/d/1yN69J6fYV0xDUKC919aVKP5WuN7d0A7GZn0QsIQzdG_M/edit#gid=0"
+conn = st.connection("gsheets", type=GSheetsConnection)
+
+# 2. Logika Kirim Saran
+with col2:
+    st.subheader("🕵️ Kotak Saran Anonim")
+    pesan = st.text_area("Tulis saran di sini...")
+    
+    if st.button("Kirim"):
+        if pesan:
+            # Ambil data lama dari tab bernama "Saran"
+            df_lama = conn.read(spreadsheet=url, worksheet="Saran")
+            
+            # Tambahkan baris baru
+            df_baru = pd.DataFrame([{"Tanggal": datetime.now(), "Saran": pesan}])
+            df_final = pd.concat([df_lama, df_baru], ignore_index=True)
+            
+            # Update kembali ke Google Sheets
+            conn.update(spreadsheet=url, worksheet="Saran", data=df_final)
+            st.success("Saran berhasil masuk ke Sheet!")
 
 # --- TAMPILAN DASHBOARD ---
 else:
@@ -80,3 +90,4 @@ else:
         st.dataframe(df, use_container_width=True)
     except:
         st.info("Sedang memuat data dari Google Sheets...")
+
